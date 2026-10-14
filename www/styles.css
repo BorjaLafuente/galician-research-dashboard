@@ -1,0 +1,49 @@
+/* Navigation bar: dark navy, a neutral colour that never competes with the
+   three university colours */
+:root {
+  --bslib-navbar-default-bg: #1B2A41;
+  --bslib-navbar-inverse-bg: #1B2A41;
+}
+nav.navbar.navbar-default,
+nav.navbar {
+  background-color: #1B2A41 !important;
+}
+.navbar .navbar-brand,
+.navbar .nav-link,
+.navbar a {
+  color: #ffffff !important;
+}
+.navbar .nav-link.active {
+  border-bottom: 2px solid #ffffff;
+}
+
+/* Summary cards: one row per university with dot, label, bar and value */
+.kpi-row {
+  display: grid;
+  grid-template-columns: 10px 3.6rem 1fr 4.2rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.kpi-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.kpi-track {
+  height: 6px;
+  background: #ecebe7;          /* light track behind the bar */
+  border-radius: 3px;
+}
+.kpi-bar {
+  height: 100%;
+  border-radius: 3px;
+}
+.kpi-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;   /* digits aligned in columns */
+}
+
+/* Card titles a bit more prominent */
+.card-header {
+  font-weight: 600;
+}
