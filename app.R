@@ -8,7 +8,7 @@
 #   R/data.R     reads data/app.sqlite and computes the indicators
 #   R/theme.R    colours, labels and theme
 #   R/plots.R    chart functions
-#   R/mod_*.R    one module per tab
+#   R/mod_*.R    one module per tab (overview, open access...)
 #
 # Run locally from RStudio (Run App) or with:  shiny::runApp()
 
@@ -64,6 +64,7 @@ ui <- page_navbar(
   ),
 
   nav_panel("Overview", overview_ui("overview")),
+  nav_panel("Open access", open_access_ui("open_access")),
 
   nav_spacer(),
   nav_item(
@@ -108,6 +109,7 @@ server <- function(input, output, session) {
   })
 
   overview_server("overview", works, filters)
+  open_access_server("open_access", works)
 }
 
 shinyApp(ui, server)

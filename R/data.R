@@ -121,6 +121,18 @@ oa_routes_by_year <- function(df) {
 }
 
 
+#' Share of works by open access route over the whole selected period,
+#' per university.
+oa_routes_total <- function(df) {
+  df %>%
+    dplyr::filter(!is.na(oa_status)) %>%
+    dplyr::count(university, oa_status, name = "n") %>%
+    dplyr::group_by(university) %>%
+    dplyr::mutate(pct = round(100 * n / sum(n), 1)) %>%
+    dplyr::ungroup()
+}
+
+
 # --- Collaboration -----------------------------------------------------------
 
 #' Works with each partner country over the selected period.

@@ -43,3 +43,15 @@ app_theme <- bslib::bs_theme(
   ),
   "font-size-base" = "0.95rem"
 )
+
+# Open access routes, from most open to closed, with the colours used in the
+# OpenAlex repository figures (checked for colour-blind safety). Closed is a
+# neutral grey, so the open routes stand out.
+OA_ROUTES <- c(
+  gold = "#2a78d6",
+  diamond = "#eb6834",
+  hybrid = "#1baf7a",
+  bronze = "#eda100",
+  green = "#e87ba4",
+  closed = "#c9c8c3"
+)
