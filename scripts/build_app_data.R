@@ -97,7 +97,13 @@ partner_countries <- countries %>%
   filter(country_code != "ES") %>%
   inner_join(totals, by = c("university", "year")) %>%
   select(university, year, country_code, country_name, n_works, n_total) %>%
-  collect()
+  collect() %>%
+  # Maps need ISO 3-letter codes (ESP, USA...), OpenAlex gives 2-letter ones.
+  # Converting here means the app itself does not need the countrycode
+  # package. Codes without an ISO equivalent (e.g. XK, Kosovo) become NA and
+  # are left out of the map only.
+  mutate(country_iso3 = countrycode::countrycode(country_code, "iso2c", "iso3c",
+                                                 warn = FALSE))
 
 cat("partner_countries:", nrow(partner_countries), "rows\n")
 

@@ -166,17 +166,25 @@ oa_routes_total <- function(df) {
 #' from that country. Full counting: a work with authors from France and
 #' Italy counts for both, so shares add up to more than 100%.
 partner_countries_total <- function(partner_countries, universities, years) {
-  partner_countries %>%
+  selected <- partner_countries %>%
     dplyr::filter(
       university %in% universities,
       year >= years[1], year <= years[2]
-    ) %>%
-    dplyr::group_by(university, country_code, country_name) %>%
-    dplyr::summarise(
-      n_works = sum(n_works),
-      n_total = sum(n_total),
-      .groups = "drop"
-    ) %>%
+    )
+
+  # Total works of each university in the period. n_total is repeated in
+  # every country row of a year, so take one value per year first. Summing
+  # n_total inside each country would only count the years in which that
+  # country appears, and inflate the share of occasional partners.
+  totals <- selected %>%
+    dplyr::distinct(university, year, n_total) %>%
+    dplyr::group_by(university) %>%
+    dplyr::summarise(n_total = sum(n_total), .groups = "drop")
+
+  selected %>%
+    dplyr::group_by(university, country_code, country_iso3, country_name) %>%
+    dplyr::summarise(n_works = sum(n_works), .groups = "drop") %>%
+    dplyr::inner_join(totals, by = "university") %>%
     dplyr::mutate(pct_works = round(100 * n_works / n_total, 1)) %>%
     dplyr::arrange(university, dplyr::desc(n_works))
 }

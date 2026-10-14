@@ -42,6 +42,15 @@ MIN_WORKS_FIELD <- 30
 # Number of research fields shown by default in the Impact tab (the largest)
 TOP_FIELDS <- 12
 
+# Number of partner institutions shown on the map
+TOP_PARTNERS <- 50
+
+# Sequential scale for maps: one hue, from light (few works) to dark (many)
+MAP_SCALE <- list(c(0, "#dbe9f6"), c(1, "#0b3d75"))
+
+# Grey for countries with no co-authored works
+MAP_LAND <- "#ecebe7"
+
 # Recessive greys for text and grid lines, so the data stands out
 TEXT_MUTED <- "#52514e"
 GRID_COLOR <- "#e4e3df"

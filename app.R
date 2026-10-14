@@ -38,12 +38,32 @@ ui <- page_navbar(
   # Styles of the summary cards (R/mod_overview.R) and small adjustments
   header = tags$head(tags$link(rel = "stylesheet", href = "styles.css")),
 
+  # id = "tab": the name of the open tab is available as input$tab, which
+  # lets the sidebar show only the filters that apply to that tab
+  id = "tab",
+
+  # The sidebar is shared by every tab
   sidebar = sidebar(
     width = 280,
 
-    checkboxGroupInput(
-      "universities", "Universities",
-      choices = names(UNI_COLORS), selected = names(UNI_COLORS)
+    # conditionalPanel() shows its content only when the JavaScript
+    # condition is true. It runs in the browser, so the sidebar changes
+    # instantly when the user switches tab.
+    conditionalPanel(
+      "input.tab !== 'Collaboration'",
+      checkboxGroupInput(
+        "universities", "Universities",
+        choices = names(UNI_COLORS), selected = names(UNI_COLORS)
+      )
+    ),
+
+    # Collaboration maps show one university at a time
+    conditionalPanel(
+      "input.tab === 'Collaboration'",
+      radioButtons(
+        "collab_university", "University",
+        choices = names(UNI_COLORS), selected = "UDC"
+      )
     ),
 
     # sep = "" shows 2015 instead of 2,015
@@ -53,24 +73,37 @@ ui <- page_navbar(
       value = YEAR_RANGE, step = 1, sep = ""
     ),
 
-    checkboxGroupInput(
-      "types", "Document types",
-      choices = c("Articles" = "article", "Reviews" = "review",
-                  "Conference papers" = "conference-paper"),
-      selected = c("article", "review")
+    # Collaboration data are counts of articles and reviews by OpenAlex, with
+    # no research field, so these two filters do not apply to that tab
+    conditionalPanel(
+      "input.tab !== 'Collaboration'",
+      checkboxGroupInput(
+        "types", "Document types",
+        choices = c("Articles" = "article", "Reviews" = "review",
+                    "Conference papers" = "conference-paper"),
+        selected = c("article", "review")
+      ),
+
+      # Empty selection = all fields
+      selectizeInput(
+        "fields", "Research fields",
+        choices = ALL_FIELDS, multiple = TRUE,
+        options = list(placeholder = "All fields")
+      )
     ),
 
-    # Empty selection = all fields
-    selectizeInput(
-      "fields", "Research fields",
-      choices = ALL_FIELDS, multiple = TRUE,
-      options = list(placeholder = "All fields")
+    conditionalPanel(
+      "input.tab === 'Collaboration'",
+      p(class = "text-muted small",
+        "Collaboration data cover articles and reviews, with no breakdown ",
+        "by research field.")
     )
   ),
 
   nav_panel("Overview", overview_ui("overview")),
   nav_panel("Open access", open_access_ui("open_access")),
   nav_panel("Impact", impact_ui("impact")),
+  nav_panel("Collaboration", collaboration_ui("collaboration")),
 
   nav_spacer(),
   nav_item(
@@ -117,6 +150,10 @@ server <- function(input, output, session) {
   overview_server("overview", works, filters)
   open_access_server("open_access", works)
   impact_server("impact", works)
+  collaboration_server("collaboration",
+                       university = reactive(input$collab_university),
+                       years = reactive(input$years),
+                       app_data$partner_countries, app_data$partner_institutions)
 }
 
 shinyApp(ui, server)

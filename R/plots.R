@@ -250,3 +250,110 @@ plot_fields <- function(df, x, x_label) {
     ) %>%
     plotly::config(displaylogo = FALSE, modeBarButtons = list(list("toImage")))
 }
+
+
+# --- Collaboration -----------------------------------------------------------
+
+# Map settings shared by the two maps: no frame, no coastlines, light grey
+# land, and a projection that keeps the shape of the continents
+geo_layout <- function() {
+  list(
+    showframe = FALSE, showcoastlines = FALSE,
+    showland = TRUE, landcolor = MAP_LAND,
+    showcountries = TRUE, countrycolor = "#fcfcfb",
+    projection = list(type = "natural earth"),
+    bgcolor = "rgba(0,0,0,0)"
+  )
+}
+
+
+#' World map: share of the university's works with each partner country.
+#'
+#' df: output of partner_countries_total() for one university.
+plot_country_map <- function(df) {
+  df <- df %>% dplyr::filter(!is.na(country_iso3))
+
+  plotly::plot_ly(
+    type = "choropleth",
+    locations = df$country_iso3,
+    z = df$pct_works,
+    text = df$country_name,
+    customdata = df$n_works,
+    colorscale = MAP_SCALE,
+    marker = list(line = list(color = "#fcfcfb", width = 0.5)),
+    colorbar = list(title = "% of works", ticksuffix = "%", len = 0.6, thickness = 12),
+    hovertemplate = paste0("<b>%{text}</b><br>%{z:.1f}% of works ",
+                           "(%{customdata:,})<extra></extra>")
+  ) %>%
+    plotly::layout(
+      geo = geo_layout(),
+      margin = list(l = 0, r = 0, t = 0, b = 0),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      font = list(color = TEXT_MUTED)
+    ) %>%
+    plotly::config(displaylogo = FALSE, modeBarButtons = list(list("toImage")))
+}
+
+
+#' Horizontal bars: the n countries with the largest share of works.
+#'
+#' One bar per country in the colour of the university: a single series, so
+#' the colour identifies the university and the length gives the value.
+plot_top_countries <- function(df, university, n = 15) {
+  top <- df %>%
+    dplyr::slice_max(n_works, n = n, with_ties = FALSE) %>%
+    # Largest at the top: plotly draws the first category at the bottom
+    dplyr::arrange(pct_works)
+
+  plotly::plot_ly(
+    x = top$pct_works, y = top$country_name,
+    type = "bar", orientation = "h",
+    marker = list(color = UNI_COLORS[[university]]),
+    customdata = top$n_works,
+    hovertemplate = paste0("<b>%{y}</b><br>%{x:.1f}% of works ",
+                           "(%{customdata:,})<extra></extra>")
+  ) %>%
+    plotly::layout(
+      xaxis = list(title = "% of works", ticksuffix = "%", gridcolor = GRID_COLOR,
+                   fixedrange = TRUE),
+      yaxis = list(title = "", categoryorder = "array", categoryarray = top$country_name,
+                   fixedrange = TRUE, ticksuffix = "  "),
+      bargap = 0.3,
+      margin = list(t = 10),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      plot_bgcolor = "rgba(0,0,0,0)",
+      font = list(color = TEXT_MUTED)
+    ) %>%
+    plotly::config(displaylogo = FALSE, modeBarButtons = list(list("toImage")))
+}
+
+
+#' World map of partner institutions: one circle per institution, its area
+#' proportional to the number of shared works.
+#'
+#' df: output of partner_institutions_total() for one university, already
+#' limited to the institutions to show.
+plot_institution_map <- function(df, university) {
+  df <- df %>% dplyr::filter(!is.na(latitude), !is.na(longitude))
+
+  # sqrt(): the area of the circle, not its diameter, grows with the works
+  size <- 6 + 30 * sqrt(df$n_works / max(df$n_works))
+
+  plotly::plot_ly(
+    type = "scattergeo", mode = "markers",
+    lon = df$longitude, lat = df$latitude,
+    text = df$name,
+    customdata = paste0(df$city, ", ", df$country_code, " - ",
+                        format(df$n_works, big.mark = ","), " works"),
+    marker = list(size = size, color = UNI_COLORS[[university]], opacity = 0.6,
+                  line = list(color = "#fcfcfb", width = 1)),
+    hovertemplate = "<b>%{text}</b><br>%{customdata}<extra></extra>"
+  ) %>%
+    plotly::layout(
+      geo = geo_layout(),
+      margin = list(l = 0, r = 0, t = 0, b = 0),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      font = list(color = TEXT_MUTED)
+    ) %>%
+    plotly::config(displaylogo = FALSE, modeBarButtons = list(list("toImage")))
+}
