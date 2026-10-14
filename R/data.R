@@ -107,6 +107,31 @@ indicators_total <- function(df) {
     summarise_indicators()
 }
 
+#' Citation indicators per research field and university (long format:
+#' one row per field and university).
+#'
+#' Indicators of a field with fewer than min_works works with an FWCI value
+#' are left empty (NA) for that university: they would be too unstable to
+#' compare. Fields where no university reaches the minimum are dropped.
+indicators_by_field <- function(df, min_works = MIN_WORKS_FIELD) {
+  df %>%
+    dplyr::filter(!is.na(field)) %>%
+    dplyr::group_by(field, university) %>%
+    summarise_indicators() %>%
+    dplyr::mutate(
+      reliable = n_with_fwci >= min_works,
+      pct_top10 = dplyr::if_else(reliable, pct_top10, NA_real_),
+      median_fwci = dplyr::if_else(reliable, median_fwci, NA_real_)
+    ) %>%
+    dplyr::group_by(field) %>%
+    dplyr::filter(any(reliable)) %>%
+    # Total works of the field (all selected universities), used to sort the
+    # fields from largest to smallest
+    dplyr::mutate(field_works = sum(n_works)) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(field, university, n_works, pct_top10, median_fwci, field_works)
+}
+
 #' Share of works by open access route, per university and year.
 #'
 #' Returns one row per university, year and route (long format), which is

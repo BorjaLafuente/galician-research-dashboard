@@ -23,6 +23,25 @@ TREND_INDICATORS <- c(
   "Median FWCI" = "median_fwci"
 )
 
+# Indicators of the Impact tab
+IMPACT_INDICATORS <- c(
+  "Top 10% most cited (%)" = "pct_top10",
+  "Top 1% most cited (%)" = "pct_top1",
+  "Median FWCI" = "median_fwci"
+)
+
+# Last year in the data. Its citation indicators are provisional: works
+# published a few months ago have had little time to be cited, so in charts
+# the line from the previous year to this one is dashed.
+PROVISIONAL_YEAR <- 2025
+
+# Minimum number of works to show a field's citation indicators: with fewer,
+# one or two highly cited papers change the percentage a lot
+MIN_WORKS_FIELD <- 30
+
+# Number of research fields shown by default in the Impact tab (the largest)
+TOP_FIELDS <- 12
+
 # Recessive greys for text and grid lines, so the data stands out
 TEXT_MUTED <- "#52514e"
 GRID_COLOR <- "#e4e3df"

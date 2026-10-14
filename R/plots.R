@@ -8,25 +8,53 @@
 #' Line chart of one indicator over time, one line per university.
 #'
 #' df: output of indicators_by_year(); y: name of the column to plot.
-plot_trend <- function(df, y, y_label) {
+#' provisional_from: if a year is given, the line from that year onwards is
+#' dashed, to flag values that are not final yet (recent citation data).
+plot_trend <- function(df, y, y_label, provisional_from = NULL) {
   p <- plotly::plot_ly()
 
-  # One trace per university, in the fixed order of UNI_COLORS, so each
-  # university always gets its own colour and the legend order never changes
+  # One set of traces per university, in the fixed order of UNI_COLORS, so
+  # each university always gets its own colour and the legend order never
+  # changes
   for (uni in intersect(names(UNI_COLORS), unique(df$university))) {
     d <- df %>% dplyr::filter(university == uni) %>% dplyr::arrange(year)
+    color <- UNI_COLORS[[uni]]
+
+    # Without a provisional period, the solid line covers every year
+    cut <- if (is.null(provisional_from)) max(d$year) else provisional_from
+    solid <- d %>% dplyr::filter(year <= cut)
+    dashed <- d %>% dplyr::filter(year >= cut)
 
     p <- p %>%
+      # Solid line: the one shown in the legend
+      plotly::add_trace(
+        x = solid$year, y = solid[[y]],
+        type = "scatter", mode = "lines",
+        name = uni, legendgroup = uni,
+        line = list(color = color, width = 2),
+        hoverinfo = "skip"
+      ) %>%
+      # Points with the tooltip, one per year. Kept separate from the lines
+      # so the year where solid and dashed meet appears only once.
+      # %{y} is the value; <extra></extra> hides the trace name box
       plotly::add_trace(
         x = d$year, y = d[[y]],
-        type = "scatter", mode = "lines+markers",
-        name = uni,
-        line = list(color = UNI_COLORS[[uni]], width = 2),
-        marker = list(color = UNI_COLORS[[uni]], size = 8),
-        # %{y} is the value of the point; <extra></extra> hides the trace
-        # name box that plotly adds by default
+        type = "scatter", mode = "markers",
+        name = uni, legendgroup = uni, showlegend = FALSE,
+        marker = list(color = color, size = 8),
         hovertemplate = paste0(uni, ": %{y}<extra></extra>")
       )
+
+    if (nrow(dashed) > 1) {
+      p <- p %>%
+        plotly::add_trace(
+          x = dashed$year, y = dashed[[y]],
+          type = "scatter", mode = "lines",
+          name = uni, legendgroup = uni, showlegend = FALSE,
+          line = list(color = color, width = 2, dash = "dot"),
+          hoverinfo = "skip"
+        )
+    }
   }
 
   p %>%
@@ -42,7 +70,7 @@ plot_trend <- function(df, y, y_label) {
       plot_bgcolor = "rgba(0,0,0,0)",
       font = list(color = TEXT_MUTED)
     ) %>%
-    # Keep only the useful toolbar buttons (download as PNG)
+    # Keep only the useful toolbar button (download as PNG)
     plotly::config(displaylogo = FALSE,
                    modeBarButtons = list(list("toImage")))
 }
@@ -91,8 +119,10 @@ plot_oa_routes <- function(df) {
       plotly::layout(
         # Panel title, placed relative to the panel ("paper" coordinates)
         annotations = list(list(
-          text = paste0("<b>", uni, "</b>"), x = 0, y = 1.06,
-          xref = "paper", yref = "paper", xanchor = "left",
+          # y = 1 with yanchor = "bottom": the title sits just above the
+          # top edge of the panel, never on top of the data
+          text = paste0("<b>", uni, "</b>"), x = 0, y = 1,
+          xref = "paper", yref = "paper", xanchor = "left", yanchor = "bottom",
           showarrow = FALSE, font = list(size = 13)
         ))
       )
@@ -146,10 +176,74 @@ plot_oa_routes_total <- function(df) {
       xaxis = list(title = "% of works", range = c(0, 100), gridcolor = GRID_COLOR,
                    fixedrange = TRUE),
       # categoryarray fixes the order of the bars: UDC on top
+      # ticksuffix adds a little space between the labels and the bars
       yaxis = list(title = "", categoryorder = "array",
-                   categoryarray = rev(universities), fixedrange = TRUE),
-      legend = list(orientation = "h", x = 0, y = 1.25, traceorder = "normal"),
-      margin = list(t = 50),
+                   categoryarray = rev(universities), fixedrange = TRUE,
+                   ticksuffix = "  "),
+      bargap = 0.35,
+      legend = list(orientation = "h", x = 0, y = 1.3, traceorder = "normal"),
+      margin = list(t = 40, b = 30),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      plot_bgcolor = "rgba(0,0,0,0)",
+      font = list(color = TEXT_MUTED)
+    ) %>%
+    plotly::config(displaylogo = FALSE, modeBarButtons = list(list("toImage")))
+}
+
+
+#' Dot plot: one row per research field, one dot per university.
+#'
+#' df: output of indicators_by_field(); x: column to plot. Fields are sorted
+#' by their total number of works (largest at the top), so the order does
+#' not change when the user switches indicator. A grey line joins the lowest
+#' and highest university in each field, which makes the gap easy to see.
+plot_fields <- function(df, x, x_label) {
+  df <- df %>% dplyr::filter(!is.na(.data[[x]]))
+
+  # Field order for the y axis: plotly draws the first category at the
+  # bottom, so the smallest field goes first
+  field_order <- df %>%
+    dplyr::distinct(field, field_works) %>%
+    dplyr::arrange(field_works) %>%
+    dplyr::pull(field)
+
+  ranges <- df %>%
+    dplyr::group_by(field) %>%
+    dplyr::summarise(low = min(.data[[x]]), high = max(.data[[x]]), .groups = "drop")
+
+  p <- plotly::plot_ly() %>%
+    plotly::add_segments(
+      data = ranges, x = ~low, xend = ~high, y = ~field, yend = ~field,
+      line = list(color = GRID_COLOR, width = 4),
+      hoverinfo = "skip", showlegend = FALSE
+    )
+
+  for (uni in intersect(names(UNI_COLORS), unique(df$university))) {
+    d <- df %>% dplyr::filter(university == uni)
+
+    p <- p %>%
+      plotly::add_trace(
+        x = d[[x]], y = d$field,
+        type = "scatter", mode = "markers",
+        name = uni,
+        # White ring around each dot, so overlapping dots stay distinct
+        marker = list(color = UNI_COLORS[[uni]], size = 12,
+                      line = list(color = "#fcfcfb", width = 2)),
+        # customdata carries extra values for the tooltip
+        customdata = d$n_works,
+        hovertemplate = paste0("<b>%{y}</b><br>", uni, ": %{x} ",
+                               "(%{customdata:,} works)<extra></extra>")
+      )
+  }
+
+  p %>%
+    plotly::layout(
+      xaxis = list(title = x_label, rangemode = "tozero", gridcolor = GRID_COLOR,
+                   zeroline = FALSE, fixedrange = TRUE, side = "top"),
+      yaxis = list(title = "", categoryorder = "array", categoryarray = field_order,
+                   showgrid = FALSE, fixedrange = TRUE),
+      legend = list(orientation = "h", x = 0, y = -0.02, yanchor = "top"),
+      margin = list(l = 10, t = 40),
       paper_bgcolor = "rgba(0,0,0,0)",
       plot_bgcolor = "rgba(0,0,0,0)",
       font = list(color = TEXT_MUTED)

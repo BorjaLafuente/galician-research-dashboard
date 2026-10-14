@@ -11,7 +11,7 @@ open_access_ui <- function(id) {
   shiny::tagList(
     bslib::card(
       bslib::card_header("Open access routes over time"),
-      plotly::plotlyOutput(ns("routes_by_year"), height = "420px"),
+      plotly::plotlyOutput(ns("routes_by_year"), height = "340px"),
       bslib::card_footer(
         "Each work is assigned a single route, the most open one available ",
         "(OpenAlex classification). Green therefore only counts works with no ",
@@ -20,7 +20,7 @@ open_access_ui <- function(id) {
     ),
     bslib::card(
       bslib::card_header("Open access routes, whole period"),
-      plotly::plotlyOutput(ns("routes_total"), height = "260px")
+      plotly::plotlyOutput(ns("routes_total"), height = "190px")
     )
   )
 }

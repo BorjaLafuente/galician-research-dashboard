@@ -29,6 +29,11 @@ ui <- page_navbar(
   title = "Galician research dashboard",
   theme = app_theme,
 
+  # By default bslib squeezes every card to fit the window height, so a tall
+  # chart shrinks the others. With fillable = FALSE each card keeps its own
+  # height and the page scrolls instead.
+  fillable = FALSE,
+
   # The sidebar is shared by every tab: the same filters apply everywhere
   # Styles of the summary cards (R/mod_overview.R) and small adjustments
   header = tags$head(tags$link(rel = "stylesheet", href = "styles.css")),
@@ -65,6 +70,7 @@ ui <- page_navbar(
 
   nav_panel("Overview", overview_ui("overview")),
   nav_panel("Open access", open_access_ui("open_access")),
+  nav_panel("Impact", impact_ui("impact")),
 
   nav_spacer(),
   nav_item(
@@ -110,6 +116,7 @@ server <- function(input, output, session) {
 
   overview_server("overview", works, filters)
   open_access_server("open_access", works)
+  impact_server("impact", works)
 }
 
 shinyApp(ui, server)

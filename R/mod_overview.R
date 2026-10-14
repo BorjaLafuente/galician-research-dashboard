@@ -30,8 +30,8 @@ overview_ui <- function(id) {
       ),
       plotly::plotlyOutput(ns("trend"), height = "380px"),
       bslib::card_footer(
-        "Citation indicators of the last one or two years are provisional: ",
-        "recent works have had little time to be cited."
+        "Dotted line: citation indicators of the last year are provisional, ",
+        "as recent works have had little time to be cited."
       )
     )
   )
@@ -90,7 +90,13 @@ overview_server <- function(id, works, filters) {
 
     output$trend <- plotly::renderPlotly({
       label <- names(TREND_INDICATORS)[TREND_INDICATORS == input$indicator]
-      plot_trend(by_year(), input$indicator, label)
+
+      # Citation indicators of the last year are provisional: dashed segment
+      is_citation <- input$indicator %in% IMPACT_INDICATORS
+      reaches_last_year <- max(by_year()$year) >= PROVISIONAL_YEAR
+      provisional_from <- if (is_citation && reaches_last_year) PROVISIONAL_YEAR - 1 else NULL
+
+      plot_trend(by_year(), input$indicator, label, provisional_from)
     })
   })
 }
