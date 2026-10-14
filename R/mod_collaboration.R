@@ -78,7 +78,7 @@ collaboration_server <- function(id, university, years,
       table <- institutions() %>%
         dplyr::transmute(
           Institution = name,
-          Type = tools::toTitleCase(type),
+          Type = capitalise(type),
           Country = country_code,
           City = city,
           Works = n_works,

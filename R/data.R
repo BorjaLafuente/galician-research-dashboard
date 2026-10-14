@@ -30,10 +30,21 @@ load_app_data <- function(path = "data/app.sqlite") {
   works_uni <- work_universities %>%
     dplyr::inner_join(works, by = "work_id")
 
+  # All the universities of each work as text ("UDC, USC"), computed once
+  # here for the publications explorer, which shows one row per work
+  universities_by_work <- work_universities %>%
+    dplyr::group_by(work_id) %>%
+    dplyr::summarise(universities = paste(sort(university), collapse = ", "),
+                     .groups = "drop")
+
+  works_uni <- works_uni %>%
+    dplyr::left_join(universities_by_work, by = "work_id")
+
   metadata <- DBI::dbReadTable(con, "metadata")
 
   list(
     works_uni = works_uni,
+    publications = prepare_publications(works_uni),
     partner_countries = DBI::dbReadTable(con, "partner_countries"),
     partner_institutions = DBI::dbReadTable(con, "partner_institutions"),
     # Named vector: metadata_value["built_on"]
@@ -49,15 +60,19 @@ load_app_data <- function(path = "data/app.sqlite") {
 #' fields = NULL means all fields (no filter).
 filter_works <- function(works_uni, universities, years,
                          types = c("article", "review"), fields = NULL) {
+  # .env$ means "the argument of this function", not a column of the data.
+  # Inside filter(), a bare name is looked up among the columns first:
+  # works_uni has a column called universities ("UDC, USC"), so a bare
+  # `universities` would silently use that column instead of the argument.
   out <- works_uni %>%
     dplyr::filter(
-      university %in% universities,
-      year >= years[1], year <= years[2],
-      type %in% types
+      university %in% .env$universities,
+      year >= .env$years[1], year <= .env$years[2],
+      type %in% .env$types
     )
 
   if (!is.null(fields) && length(fields) > 0) {
-    out <- out %>% dplyr::filter(field %in% fields)
+    out <- out %>% dplyr::filter(field %in% .env$fields)
   }
 
   out
@@ -158,6 +173,45 @@ oa_routes_total <- function(df) {
 }
 
 
+#' First letter in capitals: "gold" -> "Gold".
+capitalise <- function(x) sub("^(.)", "\\U\\1", x, perl = TRUE)
+
+#' One row per work, ready for the publications explorer.
+#'
+#' Built once when the app starts (see load_app_data()), so moving a filter
+#' only has to select rows, not rebuild the HTML of 67,000 titles.
+#'
+#' works_uni has one row per (work, university), so a work shared by two
+#' universities appears twice; distinct() keeps one row per work. The column
+#' universities already lists every university of the work.
+prepare_publications <- function(works_uni) {
+  works_uni %>%
+    dplyr::distinct(work_id, .keep_all = TRUE) %>%
+    dplyr::arrange(dplyr::desc(year), title) %>%
+    dplyr::mutate(
+      # Title as a link to the publication when there is a DOI.
+      # htmlEscape() turns characters such as < or & into safe HTML, so a
+      # title can never break the page (the table shows this column as HTML)
+      title_html = dplyr::if_else(
+        is.na(doi),
+        htmltools::htmlEscape(title),
+        paste0('<a href="https://doi.org/', doi, '" target="_blank">',
+               htmltools::htmlEscape(title), "</a>")
+      ),
+      # "conference-paper" -> "Conference paper". Only the first letter is
+      # changed: a simple regular expression, much faster on 67,000 rows than
+      # tools::toTitleCase()
+      type_label = capitalise(gsub("-", " ", type)),
+      oa_label = capitalise(oa_status),
+      fwci = round(fwci, 2),
+      top10_label = dplyr::if_else(is_top10 == 1, "Yes", "", missing = "")
+    ) %>%
+    dplyr::select(work_id, doi, title, title_html, year, type, type_label,
+                  source_name, field, universities, oa_status, oa_label,
+                  fwci, is_top10, top10_label)
+}
+
+
 # --- Collaboration -----------------------------------------------------------
 
 #' Works with each partner country over the selected period.
@@ -168,8 +222,8 @@ oa_routes_total <- function(df) {
 partner_countries_total <- function(partner_countries, universities, years) {
   selected <- partner_countries %>%
     dplyr::filter(
-      university %in% universities,
-      year >= years[1], year <= years[2]
+      university %in% .env$universities,
+      year >= .env$years[1], year <= .env$years[2]
     )
 
   # Total works of each university in the period. n_total is repeated in
@@ -198,12 +252,12 @@ partner_institutions_total <- function(partner_institutions, universities,
                                        years, types = NULL) {
   out <- partner_institutions %>%
     dplyr::filter(
-      university %in% universities,
-      year >= years[1], year <= years[2]
+      university %in% .env$universities,
+      year >= .env$years[1], year <= .env$years[2]
     )
 
   if (!is.null(types) && length(types) > 0) {
-    out <- out %>% dplyr::filter(type %in% types)
+    out <- out %>% dplyr::filter(type %in% .env$types)
   }
 
   out %>%

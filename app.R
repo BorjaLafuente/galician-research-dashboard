@@ -104,6 +104,7 @@ ui <- page_navbar(
   nav_panel("Open access", open_access_ui("open_access")),
   nav_panel("Impact", impact_ui("impact")),
   nav_panel("Collaboration", collaboration_ui("collaboration")),
+  nav_panel("Publications", publications_ui("publications")),
 
   nav_spacer(),
   nav_item(
@@ -154,6 +155,7 @@ server <- function(input, output, session) {
                        university = reactive(input$collab_university),
                        years = reactive(input$years),
                        app_data$partner_countries, app_data$partner_institutions)
+  publications_server("publications", works, app_data$publications)
 }
 
 shinyApp(ui, server)
